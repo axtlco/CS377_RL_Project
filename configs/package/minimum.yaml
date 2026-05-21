@@ -1,0 +1,19 @@
+name: minimum
+envs: [doorkey_6x6, doorkey_8x8, doorkey_16x16]
+paired_seeds: 10
+eval_episodes:
+  default: 100
+  doorkey_6x6: 100
+  doorkey_8x8: 100
+  doorkey_16x16: 100
+training_steps:
+  doorkey_6x6: 250000
+  doorkey_8x8: 1000000
+  doorkey_16x16: 5000000
+eval_interval:
+  doorkey_6x6: 5000
+  doorkey_8x8: 10000
+  doorkey_16x16: 25000
+fixed_replay_env: doorkey_8x8
+fixed_replay_success_mixtures: [0.001, 0.01, 0.05]
+fixed_replay_seeds: 10

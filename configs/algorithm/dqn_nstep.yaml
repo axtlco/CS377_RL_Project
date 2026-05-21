@@ -1,0 +1,2 @@
+name: dqn_nstep
+n_step: 3

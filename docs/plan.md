@@ -15,11 +15,17 @@ The original proposal uses a 2x2 factorial design:
 | 1-step TD | DQN | DQN + RIDE |
 | n-step TD | n-step DQN | n-step DQN + RIDE |
 
-This plan keeps that core design, but adds environment difficulty sweeps, mechanism-specific metrics, and control experiments that reduce confounding between discovery and propagation.
+This plan keeps that core design, but adds environment difficulty sweeps, mechanism-specific metrics, a fixed-replay propagation test, and a pre-reward discovery analysis that reduce confounding between discovery and propagation.
 
 The key methodological principle is:
 
 > Do not infer mechanism from final success rate alone. Infer mechanism only when performance effects agree with mechanism-specific diagnostics.
+
+Compute assumption:
+
+- The recommended full design assumes access to A100/H100-class GPUs.
+- MiniGrid symbolic DQN is usually not FLOP-bound on these GPUs. Use the extra compute primarily to increase seed count, evaluation precision, difficulty coverage, and diagnostic logging rather than to enlarge the agent.
+- Avoid changing the main agent into a much larger or higher-update-ratio learner merely to saturate the GPU, because that changes the discovery/propagation mechanisms being tested.
 
 ---
 
@@ -31,6 +37,7 @@ Primary benchmark:
 
 - `MiniGrid-DoorKey-6x6-v0`
 - `MiniGrid-DoorKey-8x8-v0`
+- Custom or registered intermediate DoorKey variant, preferably `DoorKey-12x12`
 - `MiniGrid-DoorKey-16x16-v0`
 
 Optional robustness benchmark if compute allows:
@@ -44,6 +51,7 @@ Rationale:
 - The environment is partially observable with a local egocentric field of view.
 - The official MiniGrid documentation describes DoorKey as difficult for classical RL because of sparse rewards and useful for curiosity or curriculum learning.
 - The difficulty sweep is necessary because DoorKey-6x6 alone may be too easy, producing ceiling effects that obscure whether discovery or propagation is the real bottleneck.
+- With A100/H100 compute, include an intermediate 10x10 or 12x12 DoorKey variant if 8x8 is too easy and 16x16 is too hard. The most informative regime is one where some seeds solve and some do not.
 
 ### 1.2 Observation Space
 
@@ -60,9 +68,7 @@ Recommended preprocessing:
 - Include agent direction as a one-hot vector.
 - Ignore mission text for DoorKey, because the mission is constant within the task family. If included, encode it as a fixed task id rather than a learned language model.
 
-Do not use privileged full-state observations in the main experiment.
-
-Add one diagnostic oracle condition using full observations only as a control, not as the main result. This checks whether apparent discovery/propagation failures are actually caused by partial observability.
+Do not use privileged full-state observations in the experiments.
 
 ### 1.3 Action Space
 
@@ -84,10 +90,6 @@ Reason:
 
 - Action masking would inject prior task knowledge and reduce exploration difficulty.
 - Keeping invalid actions preserves the original sparse-reward challenge.
-
-Optional diagnostic:
-
-- A separate action-masked condition can be run to estimate how much failure comes from wasting actions on irrelevant commands, but it should not be mixed with the main comparisons.
 
 ### 1.4 Reward Function
 
@@ -129,6 +131,7 @@ Recommended seed count:
 
 - Minimum: 10 seeds per condition, matching the original proposal.
 - Preferred: 20 seeds per condition for the main DoorKey sweep.
+- A100/H100 full package: 30 paired seeds per main condition.
 
 Seed pairing:
 
@@ -139,6 +142,7 @@ Evaluation layout protocol:
 
 - Create a fixed held-out evaluation set of environment seeds for each environment size.
 - Suggested: 100 evaluation episodes per checkpoint for DoorKey-6x6 and DoorKey-8x8; 200 for DoorKey-16x16 if variance is high.
+- A100/H100 full package: 200 evaluation episodes per checkpoint for DoorKey-6x6 and DoorKey-8x8; 300-500 for DoorKey-16x16 or other high-variance tasks.
 - Evaluation episodes use greedy policy or low-exploration policy.
 - No learning occurs during evaluation.
 
@@ -152,16 +156,29 @@ Initial recommended budget:
 |---|---:|---:|
 | DoorKey-6x6 | 250k | every 5k |
 | DoorKey-8x8 | 1M | every 10k |
+| DoorKey-12x12 or intermediate custom DoorKey | 3M | every 10k-25k |
 | DoorKey-16x16 | 5M | every 25k |
 | KeyCorridorS3R3 | 5M | every 25k |
 
-Before final runs, perform a small pilot with 3 seeds to check whether:
+A100/H100 full-package budget:
+
+| Environment | Training steps per seed | Evaluation interval |
+|---|---:|---:|
+| DoorKey-6x6 | 250k-500k | every 5k |
+| DoorKey-8x8 | 2M | every 10k |
+| DoorKey-12x12 or intermediate custom DoorKey | 5M | every 10k-25k |
+| DoorKey-16x16 | 10M | every 10k-25k |
+| KeyCorridorS3R3 | 10M | every 25k |
+
+Before final runs, perform a pilot with 5-8 paired seeds to check whether:
 
 - All agents fail completely.
 - All agents solve too early.
 - The evaluation interval is too coarse to estimate first success and post-discovery speed.
 
 If all agents solve DoorKey-6x6 quickly, keep it as a sanity check but do not make it the main evidence.
+
+If DoorKey-16x16 remains a floor-effect regime even with the A100/H100 budget, do not force conclusions from it. Use the intermediate DoorKey size as the primary mechanism-identification environment.
 
 ### 1.8 Base Agent Specification
 
@@ -185,17 +202,19 @@ Recommended stability variant:
 - Use Double DQN if vanilla DQN is unstable, but then call the baseline Double DQN consistently.
 - Do not combine dueling networks, prioritized replay, noisy nets, distributional RL, or other Rainbow components in the main factorial design, because they introduce additional mechanisms.
 
+A100/H100 implementation guidance:
+
+- Keep the main network small and fixed across conditions.
+- Keep the main update-to-data ratio at 1. Higher ratios can artificially strengthen propagation and confound the n-step comparison.
+- Keep the main batch size at 128 unless stability requires otherwise.
+- Use GPU parallelism by running many independent seed/condition jobs concurrently. Do not change the single-agent data-collection process just to increase GPU utilization.
+
 ### 1.9 n-step Backup Specification
 
 Compare:
 
 - `n = 1`
 - `n = 3`
-
-Optional sensitivity:
-
-- `n = 5`
-- `n = 10`
 
 Main comparison should use one pre-registered `n`, preferably `n = 3`, because Rainbow-style DQN commonly uses 3-step returns and multi-step targets are known to propagate newly observed rewards faster.
 
@@ -236,9 +255,128 @@ Important fairness rule:
 - If RIDE adds parameters and auxiliary losses, report parameter count and wall-clock training time.
 - Main comparisons are based on environment steps, but compute overhead should still be disclosed.
 
+### 1.11 Software Environment and Dependencies
+
+Use one reproducible Python virtual environment for all experiments.
+
+Recommended Python runtime:
+
+- Python: `3.11`
+- Minimum patch recommendation: `3.11.15` or newer security patch in the Python 3.11 series.
+- Environment manager: `venv`, `uv`, `conda`, or `mamba` are all acceptable, but the resolved lockfile must be saved with the experiment code.
+
+GPU and deep-learning stack:
+
+- Main target: PyTorch `2.12.0` with CUDA `13.0` wheels.
+- Fallback target: PyTorch `2.12.0` with CUDA `12.6` wheels if the cluster driver does not support CUDA 13.x.
+- Do not change the PyTorch/CUDA build between compared algorithms inside the same experimental batch.
+- Record `torch.__version__`, CUDA runtime version, CUDA driver version, GPU model, and cuDNN version in every run config.
+
+Core RL and environment dependencies:
+
+| Package | Recommended version | Purpose |
+|---|---:|---|
+| `torch` | `2.12.0` | DQN, RIDE auxiliary models, GPU training |
+| `torchvision` | matching PyTorch wheel | Compatibility with PyTorch install set |
+| `torchaudio` | matching PyTorch wheel | Compatibility with PyTorch install set |
+| `gymnasium` | `1.3.0` | RL environment API |
+| `minigrid` | `3.1.0` | DoorKey and related sparse-reward environments |
+| `numpy` | `>=2.2,<3` | Array operations and replay preprocessing |
+| `scipy` | `>=1.15` | Statistical utilities |
+| `pandas` | `>=2.2` | Tabular experiment summaries |
+| `polars` | `>=1.30` | Fast large-scale log analysis |
+| `pyarrow` | `>=20.0` | Parquet storage for metrics and trajectories |
+
+Experiment management and logging:
+
+| Package | Recommended version | Purpose |
+|---|---:|---|
+| `wandb` | `>=0.19` | Run tracking, artifacts, config snapshots, sweeps |
+| `tensorboard` | `>=2.19` | Local scalar, histogram, and Q-value diagnostics |
+| `hydra-core` | `>=1.3` | Structured experiment configuration |
+| `omegaconf` | `>=2.3` | Config composition and serialization |
+| `pyyaml` | `>=6.0` | Lightweight config and metadata files |
+| `tqdm` | `>=4.67` | Progress display |
+| `rich` | `>=13.9` | Readable console logs |
+
+Analysis, statistics, and visualization:
+
+| Package | Recommended version | Purpose |
+|---|---:|---|
+| `matplotlib` | `>=3.10` | Publication-quality static plots |
+| `seaborn` | `>=0.13` | Statistical plotting wrappers |
+| `plotly` | `>=6.0` | Interactive diagnostics and report appendices |
+| `kaleido` | `>=0.2` | Static export for Plotly figures |
+| `rliable` | latest available stable release | Bootstrap confidence intervals, probability of improvement, IQM-style reporting |
+| `lifelines` | `>=0.30` | Kaplan-Meier survival curves for first-success analysis |
+| `statsmodels` | `>=0.14` | Additional statistical checks |
+
+Development and reproducibility utilities:
+
+| Package | Recommended version | Purpose |
+|---|---:|---|
+| `pytest` | `>=8.3` | Unit tests for replay, n-step targets, wrappers, and metrics |
+| `ruff` | `>=0.11` | Linting and formatting |
+| `mypy` | optional | Static checks for experiment infrastructure |
+| `psutil` | `>=6.1` | System and process diagnostics |
+
+Recommended install pattern:
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install torch==2.12.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
+python -m pip install gymnasium==1.3.0 minigrid==3.1.0 numpy scipy pandas polars pyarrow wandb tensorboard hydra-core omegaconf pyyaml tqdm rich matplotlib seaborn plotly kaleido rliable lifelines statsmodels pytest ruff psutil
+```
+
+If CUDA 13.0 wheels are not compatible with the cluster driver, use the CUDA 12.6 PyTorch wheel index instead and keep every compared run on that same stack.
+
+Reproducibility requirements:
+
+- Save `pip freeze` or an equivalent lockfile with every experiment batch.
+- Save the Git commit hash, uncommitted diff status, config file, and random seeds.
+- Save the exact MiniGrid/Gymnasium environment ids and any custom DoorKey registration code.
+- Store large metrics and trajectory diagnostics as Parquet files, with W&B artifacts or another immutable artifact store for long-running batches.
+
 ---
 
-## 2. Experiments
+## 2. Team Implementation Pipeline and Experiments
+
+The project should be implemented as a sequential handoff:
+
+1. Team member 1 builds the shared experiment foundation: DQN, n-step DQN, replay logic, environment wrappers, common helper functions, metric logging, evaluation code, and hyperparameter config files.
+2. Team member 2 receives that foundation, adds the RIDE intrinsic reward module, integrates it through the shared training interface, and runs the complete four-condition experiment suite.
+
+This split keeps the project coherent: Team member 1 defines the common experimental contract, and Team member 2 extends that contract without changing baseline behavior.
+
+### 2.0 Shared Handoff Contract
+
+Team member 1 must deliver:
+
+- A single training entry point that can run either `algorithm=dqn` or `algorithm=nstep_dqn`.
+- Config files for environment id, seed, training budget, evaluation interval, replay buffer, optimizer, epsilon schedule, target network update, batch size, discount, and n-step horizon.
+- Common helpers for seeding, environment construction, observation preprocessing, replay storage, n-step return construction, checkpointing, evaluation, metric logging, and result export.
+- A stable transition schema containing at least `obs`, `action`, `reward_ext`, `next_obs`, `done`, `truncated`, `env_seed`, `episode_id`, `timestep`, and subgoal flags.
+- Unit tests or smoke tests for replay sampling, terminal n-step truncation, seed determinism, and evaluation without learning.
+- Baseline pilot results for DQN and n-step DQN on at least DoorKey-6x6 and DoorKey-8x8.
+
+Team member 2 must preserve that contract and add:
+
+- A RIDE module with state embedding, forward dynamics model, inverse dynamics model, intrinsic reward normalization, and auxiliary losses.
+- A training reward interface:
+
+```text
+r_train = reward_ext + beta * reward_ride
+```
+
+- Config extensions for `use_ride`, `beta`, intrinsic reward normalization, intrinsic clipping, RIDE loss weights, and whether the RIDE encoder is shared with the Q-network.
+- Logging for intrinsic reward magnitude, RIDE auxiliary losses, and parameter count.
+- Final training runs for all four conditions using the same seeds, environment layouts, budgets, and evaluation code.
+
+If Team member 2 needs to change a shared helper because of a bug, all affected baseline and RIDE conditions must be rerun or clearly marked as non-comparable.
+
+---
 
 ## Experiment 1: Main 2x2 Factorial Study
 
@@ -261,14 +399,32 @@ Run all four conditions on:
 - DoorKey-8x8
 - DoorKey-16x16
 
+### Team Workflow
+
+Team member 1 phase:
+
+1. Implement the common DQN trainer, target network update, replay buffer, epsilon schedule, evaluation loop, and logging schema.
+2. Implement n-step returns behind the same trainer by changing only the backup target configuration.
+3. Register configs for `dqn_1step` and `dqn_nstep`.
+4. Run smoke tests and pilot baseline runs to verify that DQN and n-step DQN produce comparable logs, checkpoints, and evaluation files.
+5. Freeze the baseline interface before handoff.
+
+Team member 2 phase:
+
+1. Add RIDE as an optional intrinsic reward module called from the same training loop.
+2. Register configs for `dqn_ride_1step` and `dqn_ride_nstep`.
+3. Verify that intrinsic rewards are used during training only and disabled during evaluation.
+4. Run the complete four-condition grid with paired seeds.
+5. Compute factorial estimates using Team member 1's baseline outputs and Team member 2's RIDE outputs.
+
 ### Method
 
 For each environment and seed:
 
-1. Initialize environment, network weights, replay buffer, and RNG streams using paired seed protocol.
+1. Initialize environment, network weights, replay buffer, RIDE module if applicable, and RNG streams using the paired seed protocol.
 2. Train each agent for the pre-specified number of environment steps.
 3. Evaluate periodically on the fixed held-out evaluation layout set.
-4. Log both training diagnostics and evaluation diagnostics.
+4. Log both training diagnostics and evaluation diagnostics using the shared schema.
 5. Disable RIDE intrinsic reward during evaluation.
 
 Primary factorial estimates:
@@ -344,12 +500,29 @@ Run across DoorKey sizes:
 
 - 6x6
 - 8x8
+- 12x12 or another intermediate custom DoorKey size if available
 - 16x16
 
 Optional extension:
 
 - KeyCorridorS3R3
 - MultiRoom variant
+
+### Team Workflow
+
+Team member 1 phase:
+
+1. Make environment id, custom DoorKey size, training budget, and evaluation interval fully config-driven.
+2. Implement fixed evaluation layout generation for every environment size.
+3. Run DQN and n-step DQN baselines across the selected difficulty sweep.
+4. Export one result table per `environment x algorithm x seed` with the same metric columns used in Experiment 1.
+
+Team member 2 phase:
+
+1. Reuse the exact same environment configs and evaluation layout files.
+2. Run DQN + RIDE and n-step DQN + RIDE across the same difficulty sweep.
+3. Combine baseline and RIDE results into one analysis table.
+4. Report how RIDE main effect, n-step main effect, and interaction change with environment difficulty.
 
 ### Method
 
@@ -376,6 +549,7 @@ If DoorKey-16x16 is failed by all agents:
 
 - Treat it as a floor-effect regime.
 - Increase training budget or include an intermediate task.
+- Under the A100/H100 full package, prefer adding an intermediate DoorKey size over overfitting conclusions to an all-failure 16x16 regime.
 
 The most informative regime is where:
 
@@ -400,12 +574,24 @@ Compare:
 1. 1-step DQN trained with a fixed replay dataset containing rare successful trajectories.
 2. n-step DQN trained with the same fixed replay dataset.
 
-Optional:
+This experiment does not require RIDE conditions. It isolates propagation by holding discovery data fixed.
 
-3. 1-step DQN with prioritized replay.
-4. n-step DQN with prioritized replay.
+### Team Workflow
 
-The optional prioritized replay conditions should be clearly marked as diagnostics, not part of the main factorial design.
+Team member 1 phase:
+
+1. Implement a dataset builder that collects random, epsilon-random, and optional scripted successful DoorKey trajectories.
+2. Save fixed replay datasets with metadata for environment id, dataset seed, success ratio, episode count, and transition count.
+3. Implement offline replay training for 1-step DQN and n-step DQN using the same Q-network and target update code as Experiment 1.
+4. Add diagnostics for Q-values and Bellman error along successful trajectories.
+5. Produce pilot fixed-replay results on DoorKey-8x8.
+
+Team member 2 phase:
+
+1. Validate that the fixed replay datasets load through the same transition schema used by online training.
+2. Run the final 1-step vs n-step fixed-replay comparison with paired initialization seeds.
+3. Periodically evaluate learned policies in the actual environment.
+4. Integrate propagation diagnostics into the final result analysis.
 
 ### Method
 
@@ -420,6 +606,7 @@ Dataset construction:
 
 Suggested dataset compositions:
 
+- 0.01% successful episodes, if enough compute is available.
 - 0.1% successful episodes.
 - 1% successful episodes.
 - 5% successful episodes.
@@ -436,6 +623,7 @@ Diagnostics:
 - Track Q-values for states/actions along successful trajectories.
 - Track how quickly positive value estimates appear at early trajectory states.
 - Track Bellman error along the successful trajectory prefix.
+- With A100/H100 compute, run 20 paired seeds for each replay composition and include the 0.01% success condition to stress-test reward propagation under extremely rare discovery.
 
 ### Interpretation
 
@@ -469,6 +657,22 @@ Compare:
 
 The key analysis window is before the first successful episode for each seed.
 
+### Team Workflow
+
+Team member 1 phase:
+
+1. Add common subgoal logging to the environment wrapper or episode logger.
+2. Log key pickup, door open, room transition, goal reached, timeout, episode length, object interactions, and coverage fields for every algorithm.
+3. Ensure these diagnostics are never exposed to the agent as observations.
+4. Produce baseline pre-reward traces for DQN and n-step DQN.
+
+Team member 2 phase:
+
+1. Add RIDE-specific logging for intrinsic reward magnitude, normalized intrinsic reward, and auxiliary losses.
+2. Run RIDE conditions using the same pre-reward logging fields.
+3. Compare pre-reward event distributions between non-RIDE and RIDE agents.
+4. Check whether RIDE increases ordered key-door-goal progress rather than only increasing generic interaction counts.
+
 ### Method
 
 For every training episode before first success:
@@ -476,7 +680,7 @@ For every training episode before first success:
 1. Log whether the agent picked up the key.
 2. Log whether the agent toggled/opened the door.
 3. Log whether the agent entered the second room.
-4. Log unique grid cells visited if full state is available for logging.
+4. Log unique grid cells visited if available from environment metadata.
 5. Log object interactions:
    - pickup attempts
    - successful key pickup
@@ -507,106 +711,6 @@ Potential failure mode:
 
 - RIDE may over-reward controllable but irrelevant interactions.
 - If RIDE increases pickup/toggle attempts but not ordered key-door-goal progress, then it may improve novelty without solving task-relevant discovery.
-
----
-
-## Experiment 5: Partial Observability Control
-
-### RQ5
-
-Are apparent discovery or propagation bottlenecks actually caused by partial observability and missing memory?
-
-### Conditions
-
-Run a reduced set:
-
-1. Main DQN with partial observation.
-2. Main n-step DQN with partial observation.
-3. Full-observation DQN.
-4. Full-observation n-step DQN.
-
-Optional:
-
-5. Recurrent DQN with partial observation.
-6. Recurrent n-step DQN with partial observation.
-
-### Method
-
-Full-observation diagnostic:
-
-- Provide a full symbolic grid observation to the network.
-- Keep action space and reward unchanged.
-- This is an oracle diagnostic, not the main benchmark.
-
-Recurrent diagnostic:
-
-- Add a GRU or LSTM after the observation encoder.
-- Train with truncated backpropagation through time.
-- Keep all other hyperparameters as close as possible.
-
-### Interpretation
-
-If full-observation agents learn much faster:
-
-- Some failures attributed to discovery/propagation may actually be observability failures.
-
-If recurrent agents close the gap:
-
-- Memory is a relevant mechanism and should be discussed as a limitation of feedforward DQN.
-
-If full observation does not change the pattern:
-
-- The original discovery/propagation interpretation becomes more credible.
-
----
-
-## Experiment 6: Hyperparameter Sensitivity and Fairness Checks
-
-### RQ6
-
-Are conclusions robust to key hyperparameters, or are they artifacts of one RIDE coefficient or one n-step horizon?
-
-### Conditions
-
-RIDE coefficient sweep:
-
-- `beta = 0.01`
-- `beta = 0.05`
-- `beta = 0.1`
-- `beta = 0.5`
-
-n-step horizon sweep:
-
-- `n = 1`
-- `n = 3`
-- `n = 5`
-- `n = 10`
-
-Run sensitivity primarily on DoorKey-8x8, because it is likely to be less saturated than 6x6 and cheaper than 16x16.
-
-### Method
-
-Use fewer seeds for sensitivity:
-
-- 5 seeds per hyperparameter setting for screening.
-- Re-run the selected setting with the full seed count for main results.
-
-Report:
-
-- Best setting chosen before final test.
-- Whether final conclusions change under nearby settings.
-- Whether RIDE or n-step is unusually brittle.
-
-### Interpretation
-
-Robust conclusion:
-
-- Same qualitative pattern appears across several plausible beta and n values.
-
-Fragile conclusion:
-
-- Interaction appears only for one beta or one n value.
-- Then report the result as hyperparameter-dependent rather than general.
 
 ---
 
@@ -984,7 +1088,7 @@ Conclude no clear bottleneck if:
 - Effects are inconsistent across environment sizes.
 - Confidence intervals are wide.
 - First-success and post-discovery metrics disagree.
-- Full-observation or recurrent controls change the pattern substantially.
+- Fixed-replay propagation results and pre-reward discovery diagnostics disagree with the online factorial results.
 
 ---
 
@@ -1009,7 +1113,33 @@ This minimum package is much stronger than the original proposal because it dire
 
 ---
 
-## 6. References to Use in Final Report
+## 6. A100/H100 Full Experimental Package
+
+If A100/H100 compute is available, use it to improve statistical reliability and mechanism identification:
+
+1. Main 2x2 factorial on DoorKey-6x6, 8x8, an intermediate DoorKey size such as 12x12, and 16x16.
+2. 30 paired seeds per main condition.
+3. 200 evaluation episodes per checkpoint for DoorKey-6x6 and DoorKey-8x8; 300-500 for DoorKey-16x16.
+4. Increased training budgets:
+   - DoorKey-6x6: 250k-500k steps.
+   - DoorKey-8x8: 2M steps.
+   - Intermediate DoorKey: 5M steps.
+   - DoorKey-16x16: 10M steps.
+5. Fixed successful replay propagation test on DoorKey-8x8 with 0.01%, 0.1%, 1%, and 5% successful-episode mixtures.
+6. 20 paired seeds for the fixed replay propagation test if feasible.
+7. Pre-reward discovery analysis for all main conditions.
+8. Keep the main model, batch size, and update-to-data ratio fixed across compared conditions.
+9. Schedule compute as many independent `environment x algorithm x seed` jobs rather than one oversized learner.
+
+Rationale:
+
+- A100/H100-class hardware does not remove sparse-reward variance.
+- The main benefit of additional compute is narrower confidence intervals, better survival analysis, more precise post-discovery timing, and stronger fixed-replay propagation tests.
+- Increasing model size, update ratio, or parallel actor count can change the causal mechanism being studied, so do not change them inside the main experimental package.
+
+---
+
+## 7. References to Use in Final Report
 
 - Mnih et al. (2015), "Human-level control through deep reinforcement learning." Nature.
 - Sutton and Barto (2018/2020), "Reinforcement Learning: An Introduction." n-step returns and temporal-difference learning.

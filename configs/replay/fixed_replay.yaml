@@ -1,0 +1,10 @@
+name: fixed_replay
+dataset_path: null
+episode_count: 20
+target_success_ratio: null
+target_success_episodes: null
+epsilon: 1.0
+max_collection_attempts: 1000
+collector_policy: random
+offline_updates: 100
+diagnostic_interval: 10

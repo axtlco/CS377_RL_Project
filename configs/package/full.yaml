@@ -1,0 +1,22 @@
+name: full
+envs: [doorkey_6x6, doorkey_8x8, doorkey_12x12, doorkey_16x16]
+paired_seeds: 30
+eval_episodes:
+  default: 200
+  doorkey_6x6: 200
+  doorkey_8x8: 200
+  doorkey_12x12: 300
+  doorkey_16x16: 500
+training_steps:
+  doorkey_6x6: 500000
+  doorkey_8x8: 2000000
+  doorkey_12x12: 5000000
+  doorkey_16x16: 10000000
+eval_interval:
+  doorkey_6x6: 5000
+  doorkey_8x8: 10000
+  doorkey_12x12: 25000
+  doorkey_16x16: 25000
+fixed_replay_env: doorkey_8x8
+fixed_replay_success_mixtures: [0.0001, 0.001, 0.01, 0.05]
+fixed_replay_seeds: 20

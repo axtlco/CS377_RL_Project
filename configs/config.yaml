@@ -1,0 +1,66 @@
+defaults:
+  - package: minimum
+  - algorithm: dqn_1step
+  - env: doorkey_6x6
+  - replay: online
+  - _self_
+
+seed: 0
+device: auto
+env_max_steps: null
+schema_version: 1
+
+environments:
+  doorkey_6x6:
+    id: MiniGrid-DoorKey-6x6-v0
+    size: 6
+    max_steps: null
+  doorkey_8x8:
+    id: MiniGrid-DoorKey-8x8-v0
+    size: 8
+    max_steps: null
+  doorkey_12x12:
+    id: MiniGrid-DoorKey-12x12-v0
+    size: 12
+    max_steps: null
+  doorkey_16x16:
+    id: MiniGrid-DoorKey-16x16-v0
+    size: 16
+    max_steps: null
+
+agent:
+  gamma: 0.99
+  batch_size: 128
+  replay_capacity: 100000
+  learning_rate: 0.00025
+  target_update_interval: 1000
+  epsilon_start: 1.0
+  epsilon_end: 0.05
+  epsilon_decay_steps: 100000
+  learning_starts: 1000
+  train_interval: 1
+  update_to_data_ratio: 1
+  double_dqn: true
+  hidden_dim: 128
+
+logging:
+  save_interval: 50000
+  tensorboard: true
+  csv: true
+  parquet: true
+  progress: false
+
+smoke:
+  enabled: false
+  training_steps: 200
+  eval_interval: 100
+  eval_episodes: 2
+  learning_starts: 20
+  batch_size: 16
+  replay_capacity: 1000
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}_${algorithm.name}_${env}_seed${seed}
+  job:
+    chdir: false
