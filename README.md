@@ -1,15 +1,15 @@
-# CS377 RL Project README
+# CS377 RL Project README (26.05.21 - RIDE X, DDQN/n-step DDQN + helper func)
 
-이 패키지는 MiniGrid DoorKey sparse-reward 강화학습 실험을 위한 Phase 1 공통 기반 코드다. RIDE를 제외한 DQN / n-step DQN baseline, 공통 replay schema, n-step return 구성, MiniGrid 환경 생성, symbolic observation preprocessing, greedy evaluation, metric logging, checkpoint 저장/복원, fixed successful replay dataset 수집, offline propagation training, successful trajectory diagnostic을 제공한다.
-
-프로젝트 문서(`docs/plan.md`, `docs/plan_ko.md`, `docs/phase_1_plan.md`)의 핵심 연구 질문은 DoorKey 실패가 주로 reward discovery 문제인지, reward propagation 문제인지, 또는 둘의 interaction인지 분리해서 검증하는 것이다. 
-
+이 패키지는 RIDE를 제외한 DQN / n-step DQN baseline, 공통 replay schema, n-step return 구성, MiniGrid 환경 생성, symbolic observation preprocessing, greedy evaluation, metric logging, checkpoint 저장/복원, fixed successful replay dataset 수집, offline propagation training, successful trajectory diagnostic을 제공한다.
+ 
 | Backup target | RIDE 없음 | RIDE 있음 |
 |---|---|---|
 | 1-step TD | DQN | DQN + RIDE |
 | n-step TD | n-step DQN | n-step DQN + RIDE |
 
-`rl_project`는 이 중 RIDE 없는 두 baseline, 즉 `dqn_1step`과 `dqn_nstep`을 같은 trainer와 같은 logging/evaluation contract 위에서 실행하는 foundation이다. 팀원 2가 RIDE를 추가하더라도 seed protocol, environment factory, preprocessing, replay transition schema, evaluation loop, episode/evaluation log schema는 유지되어야 baseline과 RIDE condition을 비교할 수 있다.
+현재 이 레포지토리는 상기된 2*2 설계 중 RIDE 없는 두 baseline, 즉 `dqn_1step`과 `dqn_nstep`을 같은 trainer와 같은 logging/evaluation contract 위에서 실행하는 foundation이다. 
+
+추후 RIDE 추가 시 seed protocol, environment factory, preprocessing, replay transition schema, evaluation loop, episode/evaluation log schema는 유지되어야 baseline과 RIDE condition을 비교할 수 있다.
 
 이 코드베이스에서 DQN baseline은 기본적으로 Double DQN target을 사용하는 DQN 계열을 뜻한다. Main comparison에서는 `agent.double_dqn=true`를 모든 condition에 고정하고, vanilla DQN ablation을 같은 비교 grid에 섞지 않는다.
 
