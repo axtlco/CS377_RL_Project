@@ -1,0 +1,5 @@
+run_id,algorithm,package,env_id,seed,checkpoint_step,eval_seed,success,return_ext,episode_length,picked_key,opened_door,entered_second_room
+dqn_ride_1step_doorkey_6x6_seed0,dqn_ride_1step,minimum,doorkey_6x6,0,100,150000,False,0.0,360,False,False,False
+dqn_ride_1step_doorkey_6x6_seed0,dqn_ride_1step,minimum,doorkey_6x6,0,100,150001,False,0.0,360,False,False,False
+dqn_ride_1step_doorkey_6x6_seed0,dqn_ride_1step,minimum,doorkey_6x6,0,200,150000,False,0.0,360,False,False,False
+dqn_ride_1step_doorkey_6x6_seed0,dqn_ride_1step,minimum,doorkey_6x6,0,200,150001,False,0.0,360,False,False,False

@@ -5,7 +5,6 @@ __pycache__/
 .pytest_cache/
 .venv/
 .ipynb_checkpoints/
-outputs/
 multirun/
 .hydra/
 build/

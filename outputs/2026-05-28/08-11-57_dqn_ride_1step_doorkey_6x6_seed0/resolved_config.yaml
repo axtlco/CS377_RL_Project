@@ -1,0 +1,96 @@
+seed: 0
+device: auto
+env_max_steps: null
+schema_version: 1
+environments:
+  doorkey_6x6:
+    id: MiniGrid-DoorKey-6x6-v0
+    size: 6
+    max_steps: null
+  doorkey_8x8:
+    id: MiniGrid-DoorKey-8x8-v0
+    size: 8
+    max_steps: null
+  doorkey_12x12:
+    id: MiniGrid-DoorKey-12x12-v0
+    size: 12
+    max_steps: null
+  doorkey_16x16:
+    id: MiniGrid-DoorKey-16x16-v0
+    size: 16
+    max_steps: null
+agent:
+  gamma: 0.99
+  batch_size: 16
+  replay_capacity: 1000
+  learning_rate: 0.00025
+  target_update_interval: 1000
+  epsilon_start: 1.0
+  epsilon_end: 0.05
+  epsilon_decay_steps: 100000
+  learning_starts: 20
+  train_interval: 1
+  update_to_data_ratio: 1
+  double_dqn: true
+  hidden_dim: 128
+ride:
+  enabled: true
+  beta: 0.1
+  embedding_dim: 128
+  hidden_dim: 256
+  learning_rate: ${agent.learning_rate}
+  forward_loss_coef: 10.0
+  inverse_loss_coef: 0.1
+  count_scale: episodic
+  reward_normalization: none
+  reward_clip_min: null
+  reward_clip_max: null
+  detach_embedding_targets: false
+  max_grad_norm: 10.0
+logging:
+  save_interval: 50000
+  tensorboard: true
+  csv: true
+  parquet: true
+  progress: false
+smoke:
+  enabled: true
+  training_steps: 200
+  eval_interval: 100
+  eval_episodes: 2
+  learning_starts: 20
+  batch_size: 16
+  replay_capacity: 1000
+package:
+  name: minimum
+  envs:
+  - doorkey_6x6
+  - doorkey_8x8
+  - doorkey_16x16
+  paired_seeds: 10
+  eval_episodes:
+    default: 100
+    doorkey_6x6: 2
+    doorkey_8x8: 100
+    doorkey_16x16: 100
+  training_steps:
+    doorkey_6x6: 200
+    doorkey_8x8: 1000000
+    doorkey_16x16: 5000000
+  eval_interval:
+    doorkey_6x6: 100
+    doorkey_8x8: 10000
+    doorkey_16x16: 25000
+  fixed_replay_env: doorkey_8x8
+  fixed_replay_success_mixtures:
+  - 0.001
+  - 0.01
+  - 0.05
+  fixed_replay_seeds: 10
+algorithm:
+  name: dqn_ride_1step
+  n_step: 1
+env: doorkey_6x6
+replay:
+  name: online
+  dataset_path: null

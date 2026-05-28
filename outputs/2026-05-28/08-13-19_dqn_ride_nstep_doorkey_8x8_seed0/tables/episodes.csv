@@ -1,0 +1,16 @@
+run_id,algorithm,package,env_id,seed,global_step,episode_id,episode_return_ext,episode_return_train,episode_return_ride,episode_length,success,timeout,picked_key,opened_door,entered_second_room,pickup_attempts,toggle_attempts,unique_cells,first_key_step,first_door_step,first_room_step,first_success_step
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,640,0,0.0,11.799129553139203,11.799129553139203,640,False,True,True,False,False,99,85,20,273.0,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,1280,1,0.0,4.535169836319981,4.535169836319981,640,False,True,True,False,False,100,75,11,532.0,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,1920,2,0.0,0.6977235789105183,0.6977235789105183,640,False,True,False,False,False,85,103,9,,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,2560,3,0.0,1.3254777043301134,1.3254777043301134,640,False,True,True,False,False,107,68,16,340.0,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,3200,4,0.0,1.9005807430890864,1.9005807430890864,640,False,True,True,False,False,80,99,18,129.0,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,3840,5,0.0,0.9787051784223879,0.9787051784223879,640,False,True,True,False,False,80,108,16,106.0,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,4480,6,0.0,0.899040168493229,0.899040168493229,640,False,True,True,False,False,103,80,12,17.0,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,5120,7,0.0,0.8914394663646815,0.8914394663646815,640,False,True,True,False,False,87,85,19,171.0,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,5760,8,0.0,0.5723418747715187,0.5723418747715187,640,False,True,True,False,False,98,81,15,22.0,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,6400,9,0.0,0.6378820135607383,0.6378820135607383,640,False,True,True,True,False,90,88,12,39.0,418.0,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,7040,10,0.0,0.5012560931383632,0.5012560931383632,640,False,True,True,False,False,87,88,20,196.0,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,7680,11,0.0,1.1726518469629807,1.1726518469629807,640,False,True,True,True,True,103,70,16,45.0,158.0,390.0,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,8261,12,0.18296875,0.501794973470387,0.318826223470387,581,True,False,True,True,True,81,64,18,96.0,535.0,542.0,581.0
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,8901,13,0.0,0.2788921989049415,0.2788921989049415,640,False,True,True,False,False,94,81,19,513.0,,,
+dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,9541,14,0.0,0.12538182794814934,0.12538182794814934,640,False,True,True,False,False,73,96,5,40.0,,,

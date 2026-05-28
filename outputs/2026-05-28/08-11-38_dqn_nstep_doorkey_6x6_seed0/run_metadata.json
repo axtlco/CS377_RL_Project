@@ -1,0 +1,16 @@
+{
+  "python_version": "3.11.0rc1",
+  "platform": "Linux-5.15.0-97-generic-x86_64-with-glibc2.35",
+  "numpy_version": "2.4.6",
+  "torch_version": "2.5.1+cu121",
+  "device": "auto",
+  "git_commit": "50b51a3a92c3ef28ac8f17f14a9670f4ba7902d6",
+  "git_dirty": false,
+  "git_status_short": "",
+  "seed": 0,
+  "seed_protocol": {
+    "stride": 100000,
+    "training_episode_seed": "seed * stride + episode_id",
+    "evaluation_seed": "(seed + 1) * stride + 50000 + index"
+  }
+}
