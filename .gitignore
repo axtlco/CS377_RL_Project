@@ -6,7 +6,6 @@ __pycache__/
 .venv/
 .ipynb_checkpoints/
 outputs/
-visualizations/
 multirun/
 .hydra/
 build/
