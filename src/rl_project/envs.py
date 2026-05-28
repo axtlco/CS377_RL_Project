@@ -25,11 +25,13 @@ def register_custom_doorkey_envs() -> None:
         )
 
 
-def make_env(env_cfg: Any, seed: int | None = None) -> gym.Env:
+def make_env(env_cfg: Any, seed: int | None = None, render_mode: str | None = None) -> gym.Env:
     register_custom_doorkey_envs()
     kwargs = {}
     if getattr(env_cfg, "max_steps", None) is not None:
         kwargs["max_steps"] = int(env_cfg.max_steps)
+    if render_mode is not None:
+        kwargs["render_mode"] = render_mode
     env = gym.make(str(env_cfg.id), **kwargs)
     env = ImgObsWrapper(env)
     if seed is not None:

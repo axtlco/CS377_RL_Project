@@ -19,6 +19,7 @@ dependencies = [
   "tensorboard>=2.14",
   "setuptools<82",
   "tqdm>=4.66",
+  "imageio>=2.34",
 ]
 
 [project.optional-dependencies]

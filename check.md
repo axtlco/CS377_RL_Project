@@ -189,10 +189,34 @@ episode/return_ride
 
 - TensorBoard를 통한 scalar curve 시각화
 - `rl_project.analyze`가 만든 CSV/Parquet table을 이용한 외부 plotting
+- checkpoint에서 greedy policy rollout을 렌더링한 GIF 저장
+
+agent가 실제 MiniGrid에서 움직이는 모습을 GIF로 저장하려면 checkpoint path를 넘긴다.
+
+```bash
+python -m rl_project.visualize \
+  outputs/2026-05-28/08-03-xx_dqn_ride_nstep_doorkey_6x6_seed0/checkpoints/step_200.pt \
+  --out visualizations/ride_nstep_seed0.gif \
+  --seed 123 \
+  --fps 6
+```
+
+`--seed`를 바꾸면 다른 DoorKey layout에서 policy가 어떻게 움직이는지 확인할 수 있다. 너무 긴 episode를 자르고 싶으면 `--max-steps`를 쓴다.
+
+```bash
+python -m rl_project.visualize \
+  outputs/.../checkpoints/step_10000.pt \
+  --out visualizations/rollout.gif \
+  --seed 123 \
+  --max-steps 200
+```
+
+GIF 생성에는 `imageio`가 필요하다. 새로 추가된 의존성이므로 기존 venv에서는 한 번 다시 설치한다.
+
+```bash
+python -m pip install -e ".[dev]"
+```
 
 아직 `python -m rl_project.plot analysis --out figures` 같은 보고서용 static plotting CLI은 추가해야함. 
 
 `checkpoint_eval.csv`, `aggregate_summary.csv`, `factorial_effects.csv`를 읽어 success curve, final success bar, AUC summary, factorial interaction plot을 생성하는 모듈을 추가해야함.
-
-+ agent 동작하는 시각화 로직도 추가해야함
-
