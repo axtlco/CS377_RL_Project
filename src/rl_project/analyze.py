@@ -16,7 +16,7 @@ ALGORITHM_FACTORS = {
 }
 
 
-RUN_KEYS = ["run_id", "algorithm", "package", "env_id", "seed"]
+RUN_KEYS = ["run_dir", "run_id", "algorithm", "package", "env_id", "seed"]
 CURVE_KEYS = [*RUN_KEYS, "checkpoint_step"]
 AGG_KEYS = ["package", "env_id", "algorithm"]
 
@@ -81,7 +81,7 @@ def checkpoint_eval_curve(eval_rows: pd.DataFrame) -> pd.DataFrame:
 def summarize_runs(eval_curve: pd.DataFrame, episode_rows: pd.DataFrame) -> pd.DataFrame:
     if eval_curve.empty:
         return pd.DataFrame()
-    episode_groups = {key: frame for key, frame in episode_rows.groupby("run_id")} if not episode_rows.empty else {}
+    episode_groups = {key: frame for key, frame in episode_rows.groupby("run_dir")} if not episode_rows.empty else {}
     rows = []
     for keys, curve in eval_curve.groupby(RUN_KEYS, dropna=False):
         curve = curve.sort_values("checkpoint_step")

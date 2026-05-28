@@ -212,10 +212,19 @@ python -m rl_project.visualize \
 ```
 
 GIF 생성에는 `imageio`가 필요하다. 새로 추가된 의존성이므로 기존 venv에서는 한 번 다시 설치한다.
+기본 GIF에는 step/action/position overlay가 들어가고, 같은 이름의 `.csv` trace도 같이 생성된다.
 
 ```bash
 python -m pip install -e ".[dev]"
 ```
+
+trace만 빠르게 확인하려면:
+
+```bash
+head visualizations/ride_nstep_seed0.csv
+```
+
+만약 action이 `done`, `pickup`, `toggle`처럼 제자리 action만 반복되면 GIF가 움직이지 않는 것이 정상이다. 이 경우는 시각화 문제가 아니라 해당 checkpoint의 greedy policy가 아직 이동하는 policy를 학습하지 못한 것이다.
 
 아직 `python -m rl_project.plot analysis --out figures` 같은 보고서용 static plotting CLI은 추가해야함. 
 

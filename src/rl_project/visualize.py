@@ -1,17 +1,30 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from pathlib import Path
 from typing import Any
 
 import imageio.v2 as imageio
 import torch
+from PIL import Image, ImageDraw
 
 from .config_utils import resolve_env_config
 from .dqn_agent import DQNAgent
 from .envs import make_env
 from .preprocessing import preprocess_obs
 from .trainer import resolve_device
+
+
+ACTION_NAMES = {
+    0: "left",
+    1: "right",
+    2: "forward",
+    3: "pickup",
+    4: "drop",
+    5: "toggle",
+    6: "done",
+}
 
 
 def torch_load_checkpoint(path: str | Path, device: torch.device) -> dict[str, Any]:
@@ -28,6 +41,8 @@ def render_rollout(
     fps: int = 6,
     device_name: str = "auto",
     max_steps: int | None = None,
+    trace_path: str | Path | None = None,
+    overlay: bool = True,
 ) -> Path:
     checkpoint_path = Path(checkpoint_path)
     output_path = Path(output_path)
@@ -44,9 +59,14 @@ def render_rollout(
         agent = DQNAgent(obs_vec.shape[0], int(env.action_space.n), cfg.agent, device)
         agent.load_state_dict(state["agent"])
         frames = []
+        trace_rows: list[dict[str, Any]] = []
         first_frame = env.render()
         if first_frame is not None:
-            frames.append(first_frame)
+            frames.append(
+                annotate_frame(first_frame, step=0, action=None, reward=0.0, done=False, truncated=False, env=env)
+                if overlay
+                else first_frame
+            )
 
         done = False
         truncated = False
@@ -56,10 +76,15 @@ def render_rollout(
             if max_steps is not None and step >= max_steps:
                 break
             action = agent.act(obs, checkpoint_step, greedy=True)
-            obs, _, done, truncated, _ = env.step(action)
+            obs, reward, done, truncated, _ = env.step(action)
+            trace_rows.append(trace_row(env, step + 1, action, float(reward), bool(done), bool(truncated)))
             frame = env.render()
             if frame is not None:
-                frames.append(frame)
+                frames.append(
+                    annotate_frame(frame, step + 1, action, float(reward), bool(done), bool(truncated), env)
+                    if overlay
+                    else frame
+                )
             step += 1
     finally:
         env.close()
@@ -67,7 +92,67 @@ def render_rollout(
     if not frames:
         raise RuntimeError("No render frames were produced. Check MiniGrid render_mode support.")
     imageio.mimsave(output_path, frames, duration=1.0 / max(1, int(fps)))
+    if trace_path is None:
+        trace_path = output_path.with_suffix(".csv")
+    write_trace(trace_path, trace_rows)
     return output_path
+
+
+def trace_row(env, step: int, action: int, reward: float, done: bool, truncated: bool) -> dict[str, Any]:
+    base = env.unwrapped
+    pos = tuple(int(value) for value in getattr(base, "agent_pos", (-1, -1)))
+    direction = int(getattr(base, "agent_dir", -1))
+    carrying = getattr(base, "carrying", None)
+    return {
+        "step": int(step),
+        "action": int(action),
+        "action_name": ACTION_NAMES.get(int(action), str(action)),
+        "reward": float(reward),
+        "done": bool(done),
+        "truncated": bool(truncated),
+        "agent_x": pos[0],
+        "agent_y": pos[1],
+        "agent_dir": direction,
+        "carrying": getattr(carrying, "type", None) or "",
+    }
+
+
+def write_trace(path: str | Path, rows: list[dict[str, Any]]) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = ["step", "action", "action_name", "reward", "done", "truncated", "agent_x", "agent_y", "agent_dir", "carrying"]
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def annotate_frame(
+    frame,
+    step: int,
+    action: int | None,
+    reward: float,
+    done: bool,
+    truncated: bool,
+    env,
+):
+    image = Image.fromarray(frame)
+    draw = ImageDraw.Draw(image)
+    action_text = "reset" if action is None else f"{action}:{ACTION_NAMES.get(int(action), action)}"
+    base = env.unwrapped
+    pos = tuple(int(value) for value in getattr(base, "agent_pos", (-1, -1)))
+    direction = int(getattr(base, "agent_dir", -1))
+    carrying = getattr(getattr(base, "carrying", None), "type", "") or "-"
+    text = f"step={step} action={action_text} pos={pos} dir={direction} carry={carrying} r={reward:.3f}"
+    if done:
+        text += " done"
+    if truncated:
+        text += " truncated"
+    left, top, right, bottom = draw.textbbox((0, 0), text)
+    pad = 4
+    draw.rectangle((0, 0, right + 2 * pad, bottom + 2 * pad), fill=(0, 0, 0))
+    draw.text((pad, pad), text, fill=(255, 255, 255))
+    return image
 
 
 def main() -> None:
@@ -78,6 +163,8 @@ def main() -> None:
     parser.add_argument("--fps", type=int, default=6, help="GIF frames per second.")
     parser.add_argument("--device", default="auto", help="Torch device: auto, cpu, cuda, cuda:0, ...")
     parser.add_argument("--max-steps", type=int, default=None, help="Optional rollout step limit.")
+    parser.add_argument("--trace-out", default=None, help="Optional rollout trace CSV path. Defaults to output GIF stem.")
+    parser.add_argument("--no-overlay", action="store_true", help="Disable step/action text overlay.")
     args = parser.parse_args()
     output_path = render_rollout(
         args.checkpoint,
@@ -86,6 +173,8 @@ def main() -> None:
         fps=args.fps,
         device_name=args.device,
         max_steps=args.max_steps,
+        trace_path=args.trace_out,
+        overlay=not args.no_overlay,
     )
     print(f"Rollout written to: {output_path}")
 
