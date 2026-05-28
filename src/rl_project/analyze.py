@@ -121,7 +121,7 @@ def normalized_auc(steps: pd.Series, values: pd.Series) -> float:
         x = np.concatenate(([0.0], x))
         y = np.concatenate(([0.0], y))
     total = max(float(x[-1]), 1.0)
-    return float(np.trapz(y, x) / total)
+    return float(np.trapezoid(y, x) / total)
 
 
 def first_event_global_step(episodes: pd.DataFrame, event_step_column: str) -> float:
