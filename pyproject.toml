@@ -17,6 +17,7 @@ dependencies = [
   "pyarrow>=14.0",
   "torch>=2.1",
   "tensorboard>=2.14",
+  "setuptools<82",
   "tqdm>=4.66",
 ]
 
