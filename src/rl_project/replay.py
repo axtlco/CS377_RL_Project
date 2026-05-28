@@ -42,6 +42,13 @@ class Transition:
     toggle_attempt: bool = False
     cell_position: tuple[int, int] = (0, 0)
     actual_n: int = 1
+    reward_train: float | None = None
+    reward_ride: float = 0.0
+    ride_count_scale: float = 1.0
+
+    def __post_init__(self) -> None:
+        if self.reward_train is None:
+            self.reward_train = float(self.reward_ext)
 
     def to_row(self) -> dict[str, Any]:
         row = asdict(self)
@@ -79,10 +86,13 @@ class ReplayBuffer:
             "obs": torch.as_tensor(np.stack([t.obs for t in items]), dtype=torch.float32, device=self.device),
             "actions": torch.as_tensor([t.action for t in items], dtype=torch.long, device=self.device),
             "reward_ext": torch.as_tensor([t.reward_ext for t in items], dtype=torch.float32, device=self.device),
+            "reward_train": torch.as_tensor([t.reward_train for t in items], dtype=torch.float32, device=self.device),
+            "reward_ride": torch.as_tensor([t.reward_ride for t in items], dtype=torch.float32, device=self.device),
             "next_obs": torch.as_tensor(np.stack([t.next_obs for t in items]), dtype=torch.float32, device=self.device),
             "done": torch.as_tensor([t.done for t in items], dtype=torch.bool, device=self.device),
             "truncated": torch.as_tensor([t.truncated for t in items], dtype=torch.bool, device=self.device),
             "actual_n": torch.as_tensor([t.actual_n for t in items], dtype=torch.long, device=self.device),
+            "ride_count_scale": torch.as_tensor([t.ride_count_scale for t in items], dtype=torch.float32, device=self.device),
             "picked_key": torch.as_tensor([t.picked_key for t in items], dtype=torch.bool, device=self.device),
             "opened_door": torch.as_tensor([t.opened_door for t in items], dtype=torch.bool, device=self.device),
             "entered_second_room": torch.as_tensor([t.entered_second_room for t in items], dtype=torch.bool, device=self.device),

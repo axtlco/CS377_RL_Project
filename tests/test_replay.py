@@ -23,6 +23,9 @@ def make_transition(i: int, done: bool = False, truncated: bool = False) -> Tran
         entered_second_room=False,
         timeout=truncated,
         cell_position=(i, i + 1),
+        reward_train=float(i) + 0.25,
+        reward_ride=0.25,
+        ride_count_scale=0.5,
     )
 
 
@@ -36,6 +39,9 @@ def test_replay_sampling_shapes_dtypes_and_flags() -> None:
     assert batch["obs"].shape == (4, 4)
     assert batch["next_obs"].dtype == torch.float32
     assert batch["actions"].dtype == torch.long
+    assert batch["reward_train"].shape == (4,)
+    assert batch["reward_ride"].dtype == torch.float32
+    assert batch["ride_count_scale"].dtype == torch.float32
     assert batch["done"].dtype == torch.bool
     assert batch["truncated"].dtype == torch.bool
     assert batch["picked_key"].all()

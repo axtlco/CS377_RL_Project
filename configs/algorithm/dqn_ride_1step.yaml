@@ -1,0 +1,6 @@
+# @package _global_
+algorithm:
+  name: dqn_ride_1step
+  n_step: 1
+ride:
+  enabled: true

@@ -57,7 +57,8 @@ class DQNAgent:
             if actual_n is None:
                 actual_n = torch.full_like(batch["actions"], int(n_step_default))
             discounts = torch.pow(torch.full_like(batch["reward_ext"], float(gamma)), actual_n.float())
-            targets = batch["reward_ext"] + not_done.float() * discounts * next_q
+            rewards = batch.get("reward_train", batch["reward_ext"])
+            targets = rewards + not_done.float() * discounts * next_q
         loss = self.loss_fn(q_values, targets)
         self.optimizer.zero_grad(set_to_none=True)
         loss.backward()

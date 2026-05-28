@@ -40,6 +40,9 @@ def _row_to_transition(row: dict) -> Transition:
         toggle_attempt=bool(row["toggle_attempt"]),
         cell_position=tuple(row["cell_position"]),
         actual_n=int(row.get("actual_n", 1)),
+        reward_train=float(row.get("reward_train", row["reward_ext"])),
+        reward_ride=float(row.get("reward_ride", 0.0)),
+        ride_count_scale=float(row.get("ride_count_scale", 1.0)),
     )
 
 

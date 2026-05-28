@@ -26,3 +26,12 @@ def test_full_package_overrides_expected_values() -> None:
     assert cfg.package.paired_seeds == 30
     assert cfg.package.training_steps.doorkey_12x12 == 5000000
     assert cfg.package.eval_episodes.doorkey_16x16 == 500
+
+
+def test_ride_algorithm_config_enables_ride() -> None:
+    with initialize_config_dir(version_base=None, config_dir=CONFIG_DIR):
+        cfg = compose(config_name="config", overrides=["algorithm=dqn_ride_nstep"])
+
+    assert cfg.algorithm.name == "dqn_ride_nstep"
+    assert cfg.algorithm.n_step == 3
+    assert cfg.ride.enabled

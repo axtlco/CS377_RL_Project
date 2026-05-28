@@ -24,11 +24,16 @@ class NStepTransitionBuffer:
         return ready
 
     def _build_first(self) -> Transition:
-        reward = 0.0
+        reward_ext = 0.0
+        reward_train = 0.0
+        reward_ride = 0.0
         last = self._queue[0]
         actual_n = 0
         for idx, item in enumerate(self._queue):
-            reward += (self.gamma**idx) * item.reward_ext
+            discount = self.gamma**idx
+            reward_ext += discount * item.reward_ext
+            reward_train += discount * float(item.reward_train)
+            reward_ride += discount * item.reward_ride
             last = item
             actual_n += 1
             if actual_n >= self.n_step or item.done or item.truncated:
@@ -37,7 +42,7 @@ class NStepTransitionBuffer:
         return Transition(
             obs=first.obs,
             action=first.action,
-            reward_ext=reward,
+            reward_ext=reward_ext,
             next_obs=last.next_obs,
             done=last.done,
             truncated=last.truncated,
@@ -53,4 +58,7 @@ class NStepTransitionBuffer:
             toggle_attempt=first.toggle_attempt,
             cell_position=first.cell_position,
             actual_n=actual_n,
+            reward_train=reward_train,
+            reward_ride=reward_ride,
+            ride_count_scale=first.ride_count_scale,
         )

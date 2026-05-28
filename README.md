@@ -1,15 +1,15 @@
-# CS377 RL Project README (26.05.21 - RIDE X, DDQN/n-step DDQN + helper func)
+# CS377 RL Project README (26.05.21 - DDQN/n-step DDQN + RIDE foundation)
 
-이 패키지는 RIDE를 제외한 DQN / n-step DQN baseline, 공통 replay schema, n-step return 구성, MiniGrid 환경 생성, symbolic observation preprocessing, greedy evaluation, metric logging, checkpoint 저장/복원, fixed successful replay dataset 수집, offline propagation training, successful trajectory diagnostic을 제공한다.
+이 패키지는 DQN / n-step DQN baseline과 RIDE intrinsic reward 조건, 공통 replay schema, n-step return 구성, MiniGrid 환경 생성, symbolic observation preprocessing, greedy evaluation, metric logging, checkpoint 저장/복원, fixed successful replay dataset 수집, offline propagation training, successful trajectory diagnostic, 기초 분석 table 생성을 제공한다.
  
 | Backup target | RIDE 없음 | RIDE 있음 |
 |---|---|---|
 | 1-step TD | DQN | DQN + RIDE |
 | n-step TD | n-step DQN | n-step DQN + RIDE |
 
-현재 이 레포지토리는 상기된 2*2 설계 중 RIDE 없는 두 baseline, 즉 `dqn_1step`과 `dqn_nstep`을 같은 trainer와 같은 logging/evaluation contract 위에서 실행하는 foundation이다. 
+현재 이 레포지토리는 상기된 2*2 설계의 네 조건, 즉 `dqn_1step`, `dqn_nstep`, `dqn_ride_1step`, `dqn_ride_nstep`을 같은 trainer와 같은 logging/evaluation contract 위에서 실행하는 foundation이다.
 
-추후 RIDE 추가 시 seed protocol, environment factory, preprocessing, replay transition schema, evaluation loop, episode/evaluation log schema는 유지되어야 baseline과 RIDE condition을 비교할 수 있다.
+RIDE 조건도 seed protocol, environment factory, preprocessing, replay transition schema, evaluation loop, episode/evaluation log schema를 baseline과 공유한다.
 
 이 코드베이스에서 DQN baseline은 기본적으로 Double DQN target을 사용하는 DQN 계열을 뜻한다. Main comparison에서는 `agent.double_dqn=true`를 모든 condition에 고정하고, vanilla DQN ablation을 같은 비교 grid에 섞지 않는다.
 
@@ -29,6 +29,8 @@
 - MiniGrid DoorKey 6x6, 8x8, 12x12, 16x16 difficulty sweep(Exp. 2) 설정 지원
 - `algorithm=dqn_1step`: 1-step Double DQN baseline
 - `algorithm=dqn_nstep`: 3-step Double DQN baseline
+- `algorithm=dqn_ride_1step`: 1-step Double DQN + RIDE intrinsic reward
+- `algorithm=dqn_ride_nstep`: 3-step Double DQN + RIDE intrinsic reward
 - Hydra/OmegaConf config 기반 실행
 - symbolic partial observation flattening 및 channel scaling
 - replay buffer와 `Transition` schema
@@ -41,10 +43,12 @@
 - scalar log를 CSV 및 TensorBoard로 저장
 - PyTorch checkpoint 저장/복원 및 run metadata 저장
 - random/epsilon-random/scripted-success/mixed fixed replay dataset 수집
+- RIDE state embedding, forward dynamics, inverse dynamics, episodic count scaled intrinsic reward, auxiliary loss logging
 - offline DQN/n-step DQN propagation training 및 successful trajectory prefix diagnostic(Exp. 3)
+- run output aggregation, success-rate AUC, bootstrap summary, factorial effect table 생성
 - smoke/unit test: replay, n-step, seeding, evaluation side effect, config package, online/offline smoke run
 
-범위 밖 구성요소는 RIDE intrinsic reward module(Exp. 1/2/4의 RIDE 조건), forward/inverse dynamics auxiliary model, intrinsic reward normalization/clipping, RIDE-specific logging, fixed replay propagation diagnostic의 최종 통계/시각화 분석 루프, pre-reward discovery analysis(Exp. 4)의 최종 분석 루프다.
+범위 밖 구성요소는 서버 job orchestration, 최종 논문용 plotting/report generation, fixed replay propagation diagnostic의 최종 통계/시각화 해석, pre-reward discovery analysis(Exp. 4)의 최종 보고서용 분석 루프다.
 
 ## 설치 및 실행 전제
 
@@ -73,6 +77,13 @@ python -m rl_project.train algorithm=dqn_1step package=minimum env=doorkey_6x6 s
 python -m rl_project.train algorithm=dqn_nstep package=minimum env=doorkey_6x6 seed=0 smoke.enabled=true
 ```
 
+온라인 RIDE smoke run:
+
+```bash
+python -m rl_project.train algorithm=dqn_ride_1step package=minimum env=doorkey_6x6 seed=0 smoke.enabled=true
+python -m rl_project.train algorithm=dqn_ride_nstep package=minimum env=doorkey_6x6 seed=0 smoke.enabled=true
+```
+
 DoorKey-8x8 minimum package pilot(Exp. 1 baseline 및 Exp. 2 difficulty sweep 일부):
 
 ```bash
@@ -96,6 +107,12 @@ pytest:
 
 ```bash
 pytest
+```
+
+실험 결과 aggregation:
+
+```bash
+python -m rl_project.analyze outputs --out analysis
 ```
 
 `tests/` 디렉터리는 논문용 실험 결과를 생성하는 곳이 아니라, `pytest`로 실행되는 코드 검증용 test suite다. 실제 실험 조건은 `configs/`로 지정하고, 학습/평가 결과는 `outputs/`에 저장된다.

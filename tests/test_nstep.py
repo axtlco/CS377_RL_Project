@@ -52,3 +52,21 @@ def test_nstep_uses_actual_n_for_bootstrap_discount() -> None:
 
     assert ready[0].reward_ext == 1.0 + 0.5 + 0.25
     assert ready[0].actual_n == 3
+
+
+def test_nstep_accumulates_training_and_ride_rewards() -> None:
+    buf = NStepTransitionBuffer(n_step=2, gamma=0.5)
+    first = tr(0, 1.0)
+    first.reward_train = 1.25
+    first.reward_ride = 0.25
+    second = tr(1, 2.0)
+    second.reward_train = 2.5
+    second.reward_ride = 0.5
+    ready = buf.append(first)
+    assert ready == []
+
+    ready = buf.append(second)
+
+    assert ready[0].reward_ext == 2.0
+    assert ready[0].reward_train == 2.5
+    assert ready[0].reward_ride == 0.5

@@ -14,6 +14,7 @@ class EpisodeTracker:
     global_step: int
     episode_return_ext: float = 0.0
     episode_return_train: float = 0.0
+    episode_return_ride: float = 0.0
     episode_length: int = 0
     success: bool = False
     timeout: bool = False
@@ -28,9 +29,16 @@ class EpisodeTracker:
     first_room_step: int | None = None
     first_success_step: int | None = None
 
-    def update(self, reward: float, diag: dict) -> None:
-        self.episode_return_ext += float(reward)
-        self.episode_return_train += float(reward)
+    def update(
+        self,
+        reward_ext: float,
+        diag: dict,
+        reward_train: float | None = None,
+        reward_ride: float = 0.0,
+    ) -> None:
+        self.episode_return_ext += float(reward_ext)
+        self.episode_return_train += float(reward_ext if reward_train is None else reward_train)
+        self.episode_return_ride += float(reward_ride)
         self.episode_length += 1
         self.success = self.success or bool(diag["reached_goal"])
         self.timeout = self.timeout or bool(diag["timeout"])
@@ -60,6 +68,7 @@ class EpisodeTracker:
             "episode_id": self.episode_id,
             "episode_return_ext": self.episode_return_ext,
             "episode_return_train": self.episode_return_train,
+            "episode_return_ride": self.episode_return_ride,
             "episode_length": self.episode_length,
             "success": self.success,
             "timeout": self.timeout,

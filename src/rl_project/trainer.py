@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,7 @@ from .metrics import EpisodeTracker
 from .nstep import NStepTransitionBuffer
 from .preprocessing import preprocess_obs
 from .replay import ReplayBuffer, Transition
+from .ride import RIDEIntrinsicReward, RIDEModule
 from .run_context import resolve_output_dir
 from .seeding import SeedStream, fixed_eval_seeds, set_global_seeds
 
@@ -67,9 +69,15 @@ class Trainer:
         self.obs_dim = int(obs_vec.shape[0])
         self.action_dim = int(self.env.action_space.n)
         self.agent = DQNAgent(self.obs_dim, self.action_dim, cfg.agent, self.device)
+        self.ride = RIDEModule(self.obs_dim, self.action_dim, cfg.ride, self.device) if bool(cfg.ride.enabled) else None
         self.replay = ReplayBuffer(int(cfg.agent.replay_capacity), obs_vec.shape, self.device)
+        self.ride_replay = (
+            ReplayBuffer(int(cfg.agent.replay_capacity), obs_vec.shape, self.device) if self.ride is not None else None
+        )
         self.nstep = NStepTransitionBuffer(int(cfg.algorithm.n_step), float(cfg.agent.gamma))
         self.seed_stream = SeedStream(int(cfg.seed))
+        self._episode_state_counts: dict[tuple[float, ...], int] = {}
+        self._log_parameter_counts()
 
     def train(self) -> Path:
         cfg = self.cfg
@@ -84,28 +92,38 @@ class Trainer:
         episode_id = 0
         env_seed = self.seed_stream.env_seed(episode_id)
         obs, _ = self.env.reset(seed=env_seed)
+        self._reset_episode_counts(preprocess_obs(obs))
         tracker = self._new_tracker(episode_id, global_step)
 
         try:
             while global_step < training_steps:
+                obs_vec = preprocess_obs(obs)
                 action = self.agent.act(obs, global_step)
                 next_obs, reward, done, truncated, _ = self.env.step(action)
+                next_obs_vec = preprocess_obs(next_obs)
                 diag = extract_diagnostics(self.env, action, float(reward), bool(done), bool(truncated))
+                ride_reward = self._intrinsic_reward(obs_vec, next_obs_vec)
+                reward_train = float(reward) + ride_reward.reward
                 transition = Transition(
-                    obs=preprocess_obs(obs),
+                    obs=obs_vec,
                     action=int(action),
                     reward_ext=float(reward),
-                    next_obs=preprocess_obs(next_obs),
+                    next_obs=next_obs_vec,
                     done=bool(done),
                     truncated=bool(truncated),
                     env_seed=int(env_seed),
                     episode_id=int(episode_id),
                     timestep=int(tracker.episode_length),
+                    reward_train=reward_train,
+                    reward_ride=ride_reward.reward,
+                    ride_count_scale=ride_reward.count_scale,
                     **diag,
                 )
+                if self.ride_replay is not None:
+                    self.ride_replay.add(transition)
                 for ready in self.nstep.append(transition):
                     self.replay.add(ready)
-                tracker.update(float(reward), diag)
+                tracker.update(float(reward), diag, reward_train=reward_train, reward_ride=ride_reward.reward)
                 obs = next_obs
                 global_step += 1
                 progress.update(1)
@@ -117,15 +135,38 @@ class Trainer:
                         self.logger.scalar("train/loss", update.loss, global_step)
                         self.logger.scalar("train/q_mean", update.q_mean, global_step)
                         self.logger.scalar("train/target_mean", update.target_mean, global_step)
+                        self.logger.scalar("train/reward_ext_mean", float(batch["reward_ext"].mean().item()), global_step)
+                        self.logger.scalar("train/reward_train_mean", float(batch["reward_train"].mean().item()), global_step)
+                        self.logger.scalar("train/reward_ride_mean", float(batch["reward_ride"].mean().item()), global_step)
+                        if (
+                            self.ride is not None
+                            and self.ride_replay is not None
+                            and len(self.ride_replay) >= int(cfg.agent.batch_size)
+                        ):
+                            ride_batch = self.ride_replay.sample(int(cfg.agent.batch_size))
+                            ride_update = self.ride.update(ride_batch)
+                            self.logger.scalar("ride/auxiliary_loss", ride_update.auxiliary_loss, global_step)
+                            self.logger.scalar("ride/forward_loss", ride_update.forward_loss, global_step)
+                            self.logger.scalar("ride/inverse_loss", ride_update.inverse_loss, global_step)
+                            self.logger.scalar(
+                                "ride/intrinsic_reward_mean",
+                                ride_update.intrinsic_reward_mean,
+                                global_step,
+                            )
+                            self.logger.scalar("ride/control_reward_mean", ride_update.control_reward_mean, global_step)
+                            self.logger.scalar("ride/count_scale_mean", ride_update.count_scale_mean, global_step)
 
                 if done or truncated:
                     tracker.global_step = global_step
                     self.logger.episode(tracker.row())
                     self.logger.scalar("episode/return_ext", tracker.episode_return_ext, global_step)
+                    self.logger.scalar("episode/return_train", tracker.episode_return_train, global_step)
+                    self.logger.scalar("episode/return_ride", tracker.episode_return_ride, global_step)
                     self.logger.scalar("episode/success", float(tracker.success), global_step)
                     episode_id += 1
                     env_seed = self.seed_stream.env_seed(episode_id)
                     obs, _ = self.env.reset(seed=env_seed)
+                    self._reset_episode_counts(preprocess_obs(obs))
                     tracker = self._new_tracker(episode_id, global_step)
 
                 if global_step % eval_interval == 0 or global_step == training_steps:
@@ -133,7 +174,14 @@ class Trainer:
 
                 if global_step % int(cfg.logging.save_interval) == 0 or global_step == training_steps:
                     ckpt = self.logger.ckpt_dir / f"step_{global_step}.pt"
-                    save_checkpoint(ckpt, self.agent, global_step, episode_id, cfg)
+                    save_checkpoint(
+                        ckpt,
+                        self.agent,
+                        global_step,
+                        episode_id,
+                        cfg,
+                        extra_state=self._checkpoint_extra_state(),
+                    )
         finally:
             progress.close()
             self.env.close()
@@ -167,6 +215,42 @@ class Trainer:
             episode_id=int(episode_id),
             global_step=int(global_step),
         )
+
+    def _checkpoint_extra_state(self) -> dict[str, Any] | None:
+        if self.ride is None:
+            return None
+        return {"ride": self.ride.state_dict()}
+
+    def _intrinsic_reward(self, obs_vec, next_obs_vec) -> RIDEIntrinsicReward:
+        if self.ride is None:
+            return RIDEIntrinsicReward(reward=0.0, control_reward=0.0, count_scale=1.0, normalized_reward=0.0)
+        count_scale = self._ride_count_scale(next_obs_vec)
+        return self.ride.intrinsic_reward(obs_vec, next_obs_vec, count_scale=count_scale)
+
+    def _ride_count_scale(self, obs_vec) -> float:
+        mode = str(self.cfg.ride.count_scale)
+        if mode == "none":
+            return 1.0
+        if mode != "episodic":
+            raise ValueError(f"Unknown ride.count_scale={mode!r}")
+        key = self._state_key(obs_vec)
+        count = self._episode_state_counts.get(key, 0) + 1
+        self._episode_state_counts[key] = count
+        return 1.0 / math.sqrt(count)
+
+    def _reset_episode_counts(self, obs_vec) -> None:
+        self._episode_state_counts = {}
+        if self.ride is not None and str(self.cfg.ride.count_scale) == "episodic":
+            self._ride_count_scale(obs_vec)
+
+    def _state_key(self, obs_vec) -> tuple[float, ...]:
+        return tuple(float(value) for value in obs_vec)
+
+    def _log_parameter_counts(self) -> None:
+        q_params = sum(param.numel() for param in self.agent.online.parameters())
+        self.logger.scalar("params/q_network", float(q_params), 0)
+        if self.ride is not None:
+            self.logger.scalar("params/ride", float(self.ride.parameter_count), 0)
 
 
 def run_training(cfg: Any) -> Path:

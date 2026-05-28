@@ -43,6 +43,21 @@ agent:
   double_dqn: true
   hidden_dim: 128
 
+ride:
+  enabled: false
+  beta: 0.1
+  embedding_dim: 128
+  hidden_dim: 256
+  learning_rate: ${agent.learning_rate}
+  forward_loss_coef: 10.0
+  inverse_loss_coef: 0.1
+  count_scale: episodic
+  reward_normalization: none
+  reward_clip_min: null
+  reward_clip_max: null
+  detach_embedding_targets: false
+  max_grad_norm: 10.0
+
 logging:
   save_interval: 50000
   tensorboard: true
