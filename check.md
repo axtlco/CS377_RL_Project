@@ -142,6 +142,69 @@ analysis/aggregate_summary.csv
 analysis/factorial_effects.csv
 ```
 
+## 4.1 Plan 기반 다음 실험 Batch
+
+`docs/plan.md` 기준으로 final run 전에 5-8 paired seed pilot을 먼저 수행한다. 목적은 다음을 확인하는 것이다.
+
+- 모든 agent가 완전히 실패하는지
+- 모든 agent가 너무 빨리 solve하는지
+- DoorKey-6x6/8x8 중 어떤 난이도가 mechanism identification에 더 유용한지
+- evaluation interval이 first success와 post-discovery speed를 보기에 충분한지
+
+온라인 2x2 factorial pilot:
+
+```bash
+tmux new -s cs377-pilot
+cd ~/CS377_RL_Project
+source .venv/bin/activate
+chmod +x scripts/run_pilot_grid.sh
+./scripts/run_pilot_grid.sh
+```
+
+기본값:
+
+```text
+envs: doorkey_6x6 doorkey_8x8
+algorithms: dqn_1step dqn_nstep dqn_ride_1step dqn_ride_nstep
+seeds: 0 1 2 3 4
+doorkey_6x6 steps: 250000
+doorkey_8x8 steps: 300000
+```
+
+더 짧게 sanity check만 하려면:
+
+```bash
+ENVS="doorkey_6x6" SEEDS="0" DOORKEY_6X6_STEPS=50000 ./scripts/run_pilot_grid.sh
+```
+
+DoorKey-8x8을 plan의 full initial budget에 가깝게 늘리려면:
+
+```bash
+DOORKEY_8X8_STEPS=1000000 ./scripts/run_pilot_grid.sh
+```
+
+Propagation만 분리해서 보는 fixed replay pilot:
+
+```bash
+tmux new -s cs377-fixed
+cd ~/CS377_RL_Project
+source .venv/bin/activate
+chmod +x scripts/run_fixed_replay_pilot.sh
+./scripts/run_fixed_replay_pilot.sh
+```
+
+기본값:
+
+```text
+env: doorkey_8x8
+seeds: 0 1 2 3 4
+fixed replay episodes: 100
+target successful episodes: 1
+offline updates: 2000
+```
+
+이 실험에서는 `dqn_1step`과 `dqn_nstep`만 비교한다. Discovery data를 고정해 n-step이 reward propagation을 더 빠르게 하는지 보기 위한 실험이다.
+
 각 파일의 의미:
 
 - `checkpoint_eval.csv`: checkpoint별 success curve
