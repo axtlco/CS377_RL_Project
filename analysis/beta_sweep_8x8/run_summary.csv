@@ -1,0 +1,13 @@
+run_dir,run_id,algorithm,package,env_id,seed,final_checkpoint_step,final_success_rate,final_return_ext_mean,best_success_rate,success_rate_auc,first_key_global_step,first_door_global_step,first_room_global_step,first_success_global_step,train_success_episodes,episode_count,post_discovery_to_25_success,post_discovery_to_50_success,post_discovery_to_75_success
+outputs/beta_sweep_8x8/beta_0.01/dqn_ride_1step/seed0,dqn_ride_1step_doorkey_8x8_seed0,dqn_ride_1step,minimum,doorkey_8x8,0,300000,0.0,0.0,0.0,0.0,273.0,1160.0,1165.0,69381.0,5,470,,,
+outputs/beta_sweep_8x8/beta_0.01/dqn_ride_1step/seed1,dqn_ride_1step_doorkey_8x8_seed1,dqn_ride_1step,minimum,doorkey_8x8,1,300000,0.0,0.0,0.0,0.0,242.0,7424.0,7453.0,7545.0,37,483,,,
+outputs/beta_sweep_8x8/beta_0.01/dqn_ride_nstep/seed0,dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,300000,0.0,0.0,0.01,0.0006666666666666666,273.0,1160.0,1165.0,37592.0,39,485,,,
+outputs/beta_sweep_8x8/beta_0.01/dqn_ride_nstep/seed1,dqn_ride_nstep_doorkey_8x8_seed1,dqn_ride_nstep,minimum,doorkey_8x8,1,300000,0.0,0.0,0.12,0.009333333333333334,242.0,6060.0,16978.0,17105.0,149,554,,,
+outputs/beta_sweep_8x8/beta_0.03/dqn_ride_1step/seed0,dqn_ride_1step_doorkey_8x8_seed0,dqn_ride_1step,minimum,doorkey_8x8,0,300000,0.0,0.0,0.0,0.0,273.0,1160.0,1165.0,22640.0,32,484,,,
+outputs/beta_sweep_8x8/beta_0.03/dqn_ride_1step/seed1,dqn_ride_1step_doorkey_8x8_seed1,dqn_ride_1step,minimum,doorkey_8x8,1,300000,0.0,0.0,0.0,0.0,242.0,10692.0,11247.0,11335.0,8,472,,,
+outputs/beta_sweep_8x8/beta_0.03/dqn_ride_nstep/seed0,dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,300000,0.0,0.0,0.03,0.0033333333333333335,273.0,1160.0,1165.0,4269.0,156,558,,,
+outputs/beta_sweep_8x8/beta_0.03/dqn_ride_nstep/seed1,dqn_ride_nstep_doorkey_8x8_seed1,dqn_ride_nstep,minimum,doorkey_8x8,1,300000,0.0,0.0,0.04,0.002,242.0,7424.0,7498.0,7541.0,64,500,,,
+outputs/beta_sweep_8x8/beta_0.05/dqn_ride_1step/seed0,dqn_ride_1step_doorkey_8x8_seed0,dqn_ride_1step,minimum,doorkey_8x8,0,300000,0.0,0.0,0.0,0.0,273.0,1160.0,1165.0,18093.0,14,474,,,
+outputs/beta_sweep_8x8/beta_0.05/dqn_ride_1step/seed1,dqn_ride_1step_doorkey_8x8_seed1,dqn_ride_1step,minimum,doorkey_8x8,1,300000,0.0,0.0,0.0,0.0,242.0,13522.0,15621.0,29383.0,8,471,,,
+outputs/beta_sweep_8x8/beta_0.05/dqn_ride_nstep/seed0,dqn_ride_nstep_doorkey_8x8_seed0,dqn_ride_nstep,minimum,doorkey_8x8,0,300000,0.0,0.0,0.0,0.0,273.0,1160.0,1165.0,15083.0,6,470,,,
+outputs/beta_sweep_8x8/beta_0.05/dqn_ride_nstep/seed1,dqn_ride_nstep_doorkey_8x8_seed1,dqn_ride_nstep,minimum,doorkey_8x8,1,300000,0.0,0.0,0.0,0.0,242.0,5889.0,5928.0,6115.0,9,472,,,

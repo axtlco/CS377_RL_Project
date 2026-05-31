@@ -1,0 +1,15 @@
+package,env_id,algorithm,metric,n,mean,median,ci95_low,ci95_high
+minimum,doorkey_8x8,dqn_ride_1step,final_success_rate,6,0.0,0.0,0.0,0.0
+minimum,doorkey_8x8,dqn_ride_1step,best_success_rate,6,0.0,0.0,0.0,0.0
+minimum,doorkey_8x8,dqn_ride_1step,success_rate_auc,6,0.0,0.0,0.0,0.0
+minimum,doorkey_8x8,dqn_ride_1step,first_key_global_step,6,257.5,257.5,247.16666666666666,267.8333333333333
+minimum,doorkey_8x8,dqn_ride_1step,first_door_global_step,6,5853.0,4292.0,2204.0,9584.966666666658
+minimum,doorkey_8x8,dqn_ride_1step,first_success_global_step,6,26396.166666666668,20366.5,13078.679166666667,44126.333333333336
+minimum,doorkey_8x8,dqn_ride_1step,post_discovery_to_50_success,0,,,,
+minimum,doorkey_8x8,dqn_ride_nstep,final_success_rate,6,0.0,0.0,0.0,0.0
+minimum,doorkey_8x8,dqn_ride_nstep,best_success_rate,6,0.03333333333333333,0.02,0.006666666666666667,0.07166666666666667
+minimum,doorkey_8x8,dqn_ride_nstep,success_rate_auc,6,0.0025555555555555557,0.0013333333333333333,0.0005555555555555556,0.005666666666666667
+minimum,doorkey_8x8,dqn_ride_nstep,first_key_global_step,6,257.5,257.5,247.16666666666666,267.8333333333333
+minimum,doorkey_8x8,dqn_ride_nstep,first_door_global_step,6,3808.8333333333335,3524.5,1948.1666666666667,5869.045833333333
+minimum,doorkey_8x8,dqn_ride_nstep,first_success_global_step,6,14617.5,11312.0,6921.925,23585.833333333332
+minimum,doorkey_8x8,dqn_ride_nstep,post_discovery_to_50_success,0,,,,
