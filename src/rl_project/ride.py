@@ -18,6 +18,14 @@ class RIDEIntrinsicReward:
 
 
 @dataclass
+class RIDEIntrinsicRewardBatch:
+    reward: torch.Tensor
+    control_reward: torch.Tensor
+    count_scale: torch.Tensor
+    normalized_reward: torch.Tensor
+
+
+@dataclass
 class RIDEUpdate:
     auxiliary_loss: float
     forward_loss: float
@@ -112,19 +120,41 @@ class RIDEModule:
     ) -> RIDEIntrinsicReward:
         obs_tensor = torch.as_tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
         next_obs_tensor = torch.as_tensor(next_obs, dtype=torch.float32, device=self.device).unsqueeze(0)
-        state_embedding = self.embedding(obs_tensor)
-        next_state_embedding = self.embedding(next_obs_tensor)
-        control_reward = torch.norm(next_state_embedding - state_embedding, dim=-1, p=2)
         scale = torch.as_tensor([float(count_scale)], dtype=torch.float32, device=self.device)
+        batch = self.intrinsic_reward_batch(obs_tensor, next_obs_tensor, scale)
+        reward = float(batch.reward.item())
+        return RIDEIntrinsicReward(
+            reward=reward,
+            control_reward=float(batch.control_reward.item()),
+            count_scale=float(count_scale),
+            normalized_reward=float(batch.normalized_reward.item()),
+        )
+
+    @torch.no_grad()
+    def intrinsic_reward_batch(
+        self,
+        obs: torch.Tensor,
+        next_obs: torch.Tensor,
+        count_scale: torch.Tensor | float = 1.0,
+    ) -> RIDEIntrinsicRewardBatch:
+        obs = obs.to(self.device, dtype=torch.float32)
+        next_obs = next_obs.to(self.device, dtype=torch.float32)
+        if isinstance(count_scale, torch.Tensor):
+            scale = count_scale.to(self.device, dtype=torch.float32)
+        else:
+            scale = torch.full((obs.shape[0],), float(count_scale), dtype=torch.float32, device=self.device)
+        state_embedding = self.embedding(obs)
+        next_state_embedding = self.embedding(next_obs)
+        control_reward = torch.norm(next_state_embedding - state_embedding, dim=-1, p=2)
         raw_reward = control_reward * scale
         normalized_reward = self._normalize_reward(raw_reward)
         clipped_reward = self._clip_reward(normalized_reward)
-        reward = float(clipped_reward.item() * float(self.cfg.beta))
-        return RIDEIntrinsicReward(
+        reward = clipped_reward * float(self.cfg.beta)
+        return RIDEIntrinsicRewardBatch(
             reward=reward,
-            control_reward=float(control_reward.item()),
-            count_scale=float(count_scale),
-            normalized_reward=float(normalized_reward.item()),
+            control_reward=control_reward,
+            count_scale=scale,
+            normalized_reward=normalized_reward,
         )
 
     def update(self, batch: dict[str, torch.Tensor]) -> RIDEUpdate:

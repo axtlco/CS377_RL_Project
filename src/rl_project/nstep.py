@@ -27,6 +27,10 @@ class NStepTransitionBuffer:
         reward_ext = 0.0
         reward_train = 0.0
         reward_ride = 0.0
+        obs_sequence = []
+        next_obs_sequence = []
+        reward_ext_sequence = []
+        ride_count_scale_sequence = []
         last = self._queue[0]
         actual_n = 0
         for idx, item in enumerate(self._queue):
@@ -34,6 +38,10 @@ class NStepTransitionBuffer:
             reward_ext += discount * item.reward_ext
             reward_train += discount * float(item.reward_train)
             reward_ride += discount * item.reward_ride
+            obs_sequence.append(item.obs)
+            next_obs_sequence.append(item.next_obs)
+            reward_ext_sequence.append(float(item.reward_ext))
+            ride_count_scale_sequence.append(float(item.ride_count_scale))
             last = item
             actual_n += 1
             if actual_n >= self.n_step or item.done or item.truncated:
@@ -61,4 +69,8 @@ class NStepTransitionBuffer:
             reward_train=reward_train,
             reward_ride=reward_ride,
             ride_count_scale=first.ride_count_scale,
+            obs_sequence=tuple(obs_sequence),
+            next_obs_sequence=tuple(next_obs_sequence),
+            reward_ext_sequence=tuple(reward_ext_sequence),
+            ride_count_scale_sequence=tuple(ride_count_scale_sequence),
         )

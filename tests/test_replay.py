@@ -42,6 +42,11 @@ def test_replay_sampling_shapes_dtypes_and_flags() -> None:
     assert batch["reward_train"].shape == (4,)
     assert batch["reward_ride"].dtype == torch.float32
     assert batch["ride_count_scale"].dtype == torch.float32
+    assert batch["nstep_obs"].shape == (4, 1, 4)
+    assert batch["nstep_next_obs"].shape == (4, 1, 4)
+    assert batch["nstep_reward_ext"].shape == (4, 1)
+    assert batch["nstep_ride_count_scale"].shape == (4, 1)
+    assert batch["nstep_mask"].all()
     assert batch["done"].dtype == torch.bool
     assert batch["truncated"].dtype == torch.bool
     assert batch["picked_key"].all()

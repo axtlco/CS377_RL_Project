@@ -30,8 +30,10 @@ def test_nstep_terminal_transition_truncates_return() -> None:
     assert ready[0].reward_ext == 1.0 + 0.9 * 2.0
     assert ready[0].done
     assert ready[0].actual_n == 2
+    assert ready[0].reward_ext_sequence == (1.0, 2.0)
     assert ready[1].reward_ext == 2.0
     assert ready[1].actual_n == 1
+    assert ready[1].reward_ext_sequence == (2.0,)
 
 
 def test_nstep_one_step_matches_plain_dqn_target_inputs() -> None:
@@ -70,3 +72,6 @@ def test_nstep_accumulates_training_and_ride_rewards() -> None:
     assert ready[0].reward_ext == 2.0
     assert ready[0].reward_train == 2.5
     assert ready[0].reward_ride == 0.5
+    assert ready[0].reward_ext_sequence == (1.0, 2.0)
+    assert len(ready[0].obs_sequence) == 2
+    assert len(ready[0].next_obs_sequence) == 2

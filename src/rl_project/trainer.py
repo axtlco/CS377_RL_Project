@@ -131,6 +131,7 @@ class Trainer:
                 if self._should_update(global_step):
                     for _ in range(int(cfg.agent.update_to_data_ratio)):
                         batch = self.replay.sample(int(cfg.agent.batch_size))
+                        batch = self._with_current_ride_rewards(batch, float(cfg.agent.gamma))
                         update = self.agent.update(batch, float(cfg.agent.gamma), int(cfg.algorithm.n_step))
                         self.logger.scalar("train/loss", update.loss, global_step)
                         self.logger.scalar("train/q_mean", update.q_mean, global_step)
@@ -145,16 +146,7 @@ class Trainer:
                         ):
                             ride_batch = self.ride_replay.sample(int(cfg.agent.batch_size))
                             ride_update = self.ride.update(ride_batch)
-                            self.logger.scalar("ride/auxiliary_loss", ride_update.auxiliary_loss, global_step)
-                            self.logger.scalar("ride/forward_loss", ride_update.forward_loss, global_step)
-                            self.logger.scalar("ride/inverse_loss", ride_update.inverse_loss, global_step)
-                            self.logger.scalar(
-                                "ride/intrinsic_reward_mean",
-                                ride_update.intrinsic_reward_mean,
-                                global_step,
-                            )
-                            self.logger.scalar("ride/control_reward_mean", ride_update.control_reward_mean, global_step)
-                            self.logger.scalar("ride/count_scale_mean", ride_update.count_scale_mean, global_step)
+                            self._log_ride_update(ride_update, global_step)
 
                 if done or truncated:
                     tracker.global_step = global_step
@@ -195,6 +187,41 @@ class Trainer:
             and len(self.replay) >= int(cfg.batch_size)
             and global_step % int(cfg.train_interval) == 0
         )
+
+    def _with_current_ride_rewards(self, batch: dict[str, torch.Tensor], gamma: float) -> dict[str, torch.Tensor]:
+        if self.ride is None:
+            return batch
+        mask = batch["nstep_mask"]
+        if not bool(mask.any().item()):
+            return batch
+        flat_obs = batch["nstep_obs"][mask]
+        flat_next_obs = batch["nstep_next_obs"][mask]
+        flat_count_scale = batch["nstep_ride_count_scale"][mask]
+        flat_ride_reward = self.ride.intrinsic_reward_batch(flat_obs, flat_next_obs, flat_count_scale).reward
+
+        ride_rewards = torch.zeros_like(batch["nstep_reward_ext"])
+        ride_rewards[mask] = flat_ride_reward
+        discounts = torch.pow(
+            torch.full((ride_rewards.shape[1],), float(gamma), dtype=torch.float32, device=self.device),
+            torch.arange(ride_rewards.shape[1], dtype=torch.float32, device=self.device),
+        )
+        mask_f = mask.float()
+        reward_ext = (batch["nstep_reward_ext"] * mask_f * discounts.unsqueeze(0)).sum(dim=1)
+        reward_ride = (ride_rewards * mask_f * discounts.unsqueeze(0)).sum(dim=1)
+
+        updated = dict(batch)
+        updated["reward_ext"] = reward_ext
+        updated["reward_ride"] = reward_ride
+        updated["reward_train"] = reward_ext + reward_ride
+        return updated
+
+    def _log_ride_update(self, update: Any, global_step: int) -> None:
+        self.logger.scalar("ride/auxiliary_loss", update.auxiliary_loss, global_step)
+        self.logger.scalar("ride/forward_loss", update.forward_loss, global_step)
+        self.logger.scalar("ride/inverse_loss", update.inverse_loss, global_step)
+        self.logger.scalar("ride/intrinsic_reward_mean", update.intrinsic_reward_mean, global_step)
+        self.logger.scalar("ride/control_reward_mean", update.control_reward_mean, global_step)
+        self.logger.scalar("ride/count_scale_mean", update.count_scale_mean, global_step)
 
     def _run_eval(self, eval_seeds: list[int], global_step: int) -> None:
         replay_size = len(self.replay)

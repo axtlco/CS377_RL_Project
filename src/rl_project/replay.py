@@ -45,16 +45,32 @@ class Transition:
     reward_train: float | None = None
     reward_ride: float = 0.0
     ride_count_scale: float = 1.0
+    obs_sequence: tuple[np.ndarray, ...] | None = None
+    next_obs_sequence: tuple[np.ndarray, ...] | None = None
+    reward_ext_sequence: tuple[float, ...] | None = None
+    ride_count_scale_sequence: tuple[float, ...] | None = None
 
     def __post_init__(self) -> None:
         if self.reward_train is None:
             self.reward_train = float(self.reward_ext)
+        if self.obs_sequence is None:
+            self.obs_sequence = (self.obs,)
+        if self.next_obs_sequence is None:
+            self.next_obs_sequence = (self.next_obs,)
+        if self.reward_ext_sequence is None:
+            self.reward_ext_sequence = (float(self.reward_ext),)
+        if self.ride_count_scale_sequence is None:
+            self.ride_count_scale_sequence = (float(self.ride_count_scale),)
 
     def to_row(self) -> dict[str, Any]:
         row = asdict(self)
         row["obs"] = self.obs.tolist()
         row["next_obs"] = self.next_obs.tolist()
         row["cell_position"] = list(self.cell_position)
+        row["obs_sequence"] = [np.asarray(obs).tolist() for obs in self.obs_sequence or ()]
+        row["next_obs_sequence"] = [np.asarray(obs).tolist() for obs in self.next_obs_sequence or ()]
+        row["reward_ext_sequence"] = list(self.reward_ext_sequence or ())
+        row["ride_count_scale_sequence"] = list(self.ride_count_scale_sequence or ())
         return row
 
 
@@ -82,6 +98,7 @@ class ReplayBuffer:
         batch = [self._data[i] for i in idxs]
         assert all(item is not None for item in batch)
         items = [item for item in batch if item is not None]
+        nstep = self._sample_nstep_sequences(items)
         return {
             "obs": torch.as_tensor(np.stack([t.obs for t in items]), dtype=torch.float32, device=self.device),
             "actions": torch.as_tensor([t.action for t in items], dtype=torch.long, device=self.device),
@@ -97,7 +114,37 @@ class ReplayBuffer:
             "opened_door": torch.as_tensor([t.opened_door for t in items], dtype=torch.bool, device=self.device),
             "entered_second_room": torch.as_tensor([t.entered_second_room for t in items], dtype=torch.bool, device=self.device),
             "timeout": torch.as_tensor([t.timeout for t in items], dtype=torch.bool, device=self.device),
+            **nstep,
         }
 
     def rows(self) -> list[dict[str, Any]]:
         return [t.to_row() for t in self._data[: self._size] if t is not None]
+
+    def _sample_nstep_sequences(self, items: list[Transition]) -> dict[str, torch.Tensor]:
+        max_n = max(len(t.reward_ext_sequence or ()) for t in items)
+        batch_size = len(items)
+        nstep_obs = np.zeros((batch_size, max_n, *self.obs_shape), dtype=np.float32)
+        nstep_next_obs = np.zeros((batch_size, max_n, *self.obs_shape), dtype=np.float32)
+        nstep_reward_ext = np.zeros((batch_size, max_n), dtype=np.float32)
+        nstep_ride_count_scale = np.ones((batch_size, max_n), dtype=np.float32)
+        nstep_mask = np.zeros((batch_size, max_n), dtype=bool)
+        for row, transition in enumerate(items):
+            obs_sequence = transition.obs_sequence or (transition.obs,)
+            next_obs_sequence = transition.next_obs_sequence or (transition.next_obs,)
+            reward_ext_sequence = transition.reward_ext_sequence or (transition.reward_ext,)
+            count_scale_sequence = transition.ride_count_scale_sequence or (transition.ride_count_scale,)
+            for col, (obs, next_obs, reward_ext, count_scale) in enumerate(
+                zip(obs_sequence, next_obs_sequence, reward_ext_sequence, count_scale_sequence)
+            ):
+                nstep_obs[row, col] = obs
+                nstep_next_obs[row, col] = next_obs
+                nstep_reward_ext[row, col] = float(reward_ext)
+                nstep_ride_count_scale[row, col] = float(count_scale)
+                nstep_mask[row, col] = True
+        return {
+            "nstep_obs": torch.as_tensor(nstep_obs, dtype=torch.float32, device=self.device),
+            "nstep_next_obs": torch.as_tensor(nstep_next_obs, dtype=torch.float32, device=self.device),
+            "nstep_reward_ext": torch.as_tensor(nstep_reward_ext, dtype=torch.float32, device=self.device),
+            "nstep_ride_count_scale": torch.as_tensor(nstep_ride_count_scale, dtype=torch.float32, device=self.device),
+            "nstep_mask": torch.as_tensor(nstep_mask, dtype=torch.bool, device=self.device),
+        }
