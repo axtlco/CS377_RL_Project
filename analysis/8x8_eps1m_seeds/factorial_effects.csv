@@ -1,0 +1,4 @@
+package,env_id,metric,dqn_1step,dqn_ride_1step,dqn_nstep,dqn_ride_nstep,ride_main_effect,nstep_main_effect,ride_x_nstep_interaction
+minimum,doorkey_8x8,final_success_rate,0.0,0.0,0.0475,0.04000000000000001,-0.0037499999999999964,0.043750000000000004,-0.007499999999999993
+minimum,doorkey_8x8,best_success_rate,0.0,0.0,0.14,0.21499999999999997,0.03749999999999998,0.1775,0.07499999999999996
+minimum,doorkey_8x8,success_rate_auc,0.0,0.0,0.0252125,0.044649999999999995,0.009718749999999998,0.03493125,0.019437499999999996
