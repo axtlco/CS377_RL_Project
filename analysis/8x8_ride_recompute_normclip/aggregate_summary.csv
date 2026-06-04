@@ -1,0 +1,8 @@
+package,env_id,algorithm,metric,n,mean,median,ci95_low,ci95_high
+minimum,doorkey_8x8,dqn_ride_nstep,final_success_rate,5,0.192,0.0,0.0,0.384
+minimum,doorkey_8x8,dqn_ride_nstep,best_success_rate,5,0.506,0.7,0.184,0.826
+minimum,doorkey_8x8,dqn_ride_nstep,success_rate_auc,5,0.12806,0.1265,0.03418,0.22749999999999998
+minimum,doorkey_8x8,dqn_ride_nstep,first_key_global_step,5,226.0,228.0,154.4,300.8
+minimum,doorkey_8x8,dqn_ride_nstep,first_door_global_step,5,2266.2,2700.0,1197.6,3212.4
+minimum,doorkey_8x8,dqn_ride_nstep,first_success_global_step,5,21136.4,19030.0,15737.2,28786.0
+minimum,doorkey_8x8,dqn_ride_nstep,post_discovery_to_50_success,3,690186.0,713629.0,520970.0,835959.0
