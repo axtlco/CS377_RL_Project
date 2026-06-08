@@ -1,0 +1,5 @@
+algorithm	seed	checkpoint_step	success_rate	run_dir	eval_seed
+dqn_1step	0	1000000	0.0000	outputs/8x8_eps1m/2026-05-31_13-41-33/dqn_1step/seed0	150000
+dqn_nstep	0	910000	0.5600	outputs/8x8_eps1m/2026-05-31_13-41-33/dqn_nstep/seed0	150000
+dqn_ride_1step	0	870000	0.0800	outputs/8x8_ride_1step_final/2026-06-04_15-04-32/doorkey_8x8/dqn_ride_1step/seed0	150001
+dqn_ride_nstep	3	840000	0.9100	outputs/8x8_ride_recompute_normclip/2026-06-03_14-31-06/doorkey_8x8/dqn_ride_nstep/seed3	450000
